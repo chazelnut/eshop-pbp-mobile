@@ -35,7 +35,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 'Create Product Form',
               ),
             ),
-            backgroundColor: Colors.indigo,
+            backgroundColor: Colors.redAccent,
             foregroundColor: Colors.white,
           ),
           // TODO: Tambahkan drawer yang sudah dibuat di sini
@@ -210,7 +210,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                       child: ElevatedButton(
                         style: ButtonStyle(
                           backgroundColor:
-                              MaterialStateProperty.all(Colors.indigo),
+                              MaterialStateProperty.all(Colors.redAccent),
                         ),
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
