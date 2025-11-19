@@ -69,3 +69,50 @@ samples, guidance on mobile development, and a full API reference.
     - Warna-warna utama seperti AppBar, tombol, dan drawer menggunakan warna yang konsisten dari tema.
     - Untuk elemen khusus (seperti tombol menu utama), warna juga diatur secara eksplisit (biru, hijau, merah) agar tetap harmonis dengan tema utama aplikasi.
     - Dengan cara ini, seluruh aplikasi memiliki nuansa warna yang seragam dan mudah dikenali sebagai identitas visual Emyu Shop.
+  
+# Tugas 9
+1. Jelaskan mengapa kita perlu membuat model Dart saat mengambil/mengirim data JSON? Apa konsekuensinya jika langsung memetakan Map<String, dynamic> tanpa model (terkait validasi tipe, null-safety, maintainability)?
+    - Perlu Model: Agar data yang kita olah lebih terstruktur dan aman (Type Safety). Kita bisa mendefinisikan tipe data yang pasti (String, int, bool) sehingga compiler bisa membantu mendeteksi kesalahan sebelum aplikasi dijalankan.
+    - Konsekuensi tanpa Model:
+        1. Rawan Error: Jika salah mengetik nama key dalam Map (misal data['nmae'] padahal harusnya data['name']), error baru akan muncul saat aplikasi berjalan (runtime error).
+        2. Tidak ada Autocomplete: Kita harus hafal semua key dari JSON.
+        3. Sulit di-maintain: Jika struktur data dari backend berubah, kita harus mencari dan mengganti manual setiap pemanggilan Map di seluruh kode, sedangkan dengan model kita hanya perlu mengubah satu file saja.
+
+2. Apa fungsi package http dan CookieRequest dalam tugas ini? Jelaskan perbedaan peran http vs CookieRequest.
+    - http: Library dasar untuk melakukan request HTTP (GET, POST, dll) ke server. Namun, library ini bersifat stateless, artinya dia tidak menyimpan sesi login secara otomatis.
+    - CookieRequest (pbp_django_auth): Wrapper atau pembungkus di atas http yang dimodifikasi untuk menangani cookies secara otomatis.
+    - Perbedaan: http digunakan untuk request biasa yang tidak butuh sesi yang persisten, sedangkan CookieRequest wajib digunakan untuk fitur yang butuh autentikasi (Login/Logout/CRUD User) karena ia menyimpan sessionid dan token CSRF yang dikirim Django, sehingga server mengenali user yang sedang login.
+
+3. Jelaskan mengapa instance CookieRequest perlu untuk dibagikan ke semua komponen di aplikasi Flutter.
+    - Karena CookieRequest menyimpan state login (cookies). Jika kita membuat instance baru di setiap halaman (new CookieRequest()), cookies-nya akan kosong dan server akan menganggap user belum login (anonymous). Dengan membagikan satu instance yang sama (singleton) menggunakan Provider ke seluruh aplikasi, status login pengguna akan tetap terjaga konsisten saat berpindah-pindah halaman.
+
+4. Jelaskan konfigurasi konektivitas yang diperlukan agar Flutter dapat berkomunikasi dengan Django. Mengapa kita perlu menambahkan 10.0.2.2 pada ALLOWED_HOSTS, mengaktifkan CORS dan pengaturan SameSite/cookie, dan menambahkan izin akses internet di Android? Apa yang akan terjadi jika konfigurasi tersebut tidak dilakukan dengan benar?
+    - 10.0.2.2: Alamat IP khusus yang digunakan Emulator Android untuk mengakses localhost komputer. Tanpa ini di ALLOWED_HOSTS, Django akan menolak request dari emulator dengan error DisallowedHost.
+    - CORS (Cross-Origin Resource Sharing): Memberi izin kepada browser/client dari domain berbeda untuk mengakses resource Django. Tanpa ini, request (terutama dari web build) akan diblokir oleh browser demi keamanan.
+    - SameSite/Cookie: Mengatur agar cookie sesi aman tetapi tetap bisa dikirim antar-domain jika diperlukan. Jika salah set, cookie sesi mungkin tidak tersimpan di browser/client sehingga login selalu gagal.
+    - Internet Permission: Izin wajib di AndroidManifest.xml agar aplikasi Android boleh menggunakan jaringan internet. Jika lupa, aplikasi akan error SocketException atau tidak bisa connect sama sekali.
+
+5. Jelaskan mekanisme pengiriman data mulai dari input hingga dapat ditampilkan pada Flutter.
+    - Input: Pengguna mengisi form di Flutter -> Validasi Form (client-side).
+Kirim (POST): Data diubah jadi JSON -> Dikirim via CookieRequest ke endpoint Django.
+    - Proses Server: Django menerima request -> Validasi serializer -> Simpan ke Database -> Return response JSON (sukses/gagal).
+    - Fetch (GET): Halaman list di Flutter melakukan request GET ke endpoint JSON Django.
+    - Tampil: Flutter menerima JSON -> Parsing ke Objek Model Dart -> Widget (seperti ListView atau FutureBuilder) di-rebuild untuk menampilkan data terbaru.
+
+6. Jelaskan mekanisme autentikasi dari login, register, hingga logout. Mulai dari input data akun pada Flutter ke Django hingga selesainya proses autentikasi oleh Django dan tampilnya menu pada Flutter.
+    - Register: Input data -> POST ke /auth/register/ -> Django bikin User baru -> Return success.
+    - Login: Input username/password -> POST ke /auth/login/.
+    - Django memverifikasi akun. Jika benar, Django membuat sesi login dan mengirimkan cookie sessionid di header response.
+    - Flutter (CookieRequest) menyimpan cookie tersebut di memori lokal aplikasi.
+    - loggedIn state menjadi true, user diarahkan ke menu utama.
+    - Request Berautentikasi: Saat Flutter minta data (misal item milik user), cookie sessionid ikut terkirim otomatis, jadi Django tahu siapa yang minta data.
+    - Logout: Flutter request ke /auth/logout/ -> Django menghapus sesi di server -> Flutter menghapus cookie di memori -> User kembali ke halaman login.
+
+7. Jelaskan bagaimana cara kamu mengimplementasikan checklist di atas secara step-by-step! (bukan hanya sekadar mengikuti tutorial).
+    - Persiapan Django: Menambahkan app authentication, corsheaders, dan membuat view login/register serta endpoint JSON untuk produk.
+    - Model Dart: Saya copy JSON response dari Postman/Browser, lalu convert menjadi Dart class (Model) agar parsing data lebih mudah.
+    - Provider Setup: Menambahkan Provider di root aplikasi (main.dart) untuk CookieRequest agar bisa diakses global.
+    - Fitur Login/Register: Membuat halaman form yang memanggil fungsi login dan register dari CookieRequest. Jika login sukses, navigasi diarahken ke MyHomePage.
+    - Menampilkan Data: Menggunakan FutureBuilder di halaman utama untuk mengambil data dari endpoint JSON Django, lalu mapping data tersebut ke dalam widget ItemCard yang sudah saya buat sebelumnya.
+    - Filter User: Di view Django, saya ubah query-nya menjadi Item.objects.filter(user=request.user) agar data yang muncul hanya milik user tersebut.
+    - Halaman Detail: Membuat page baru yang menerima parameter object Item, lalu menampilkannya secara lengkap. Navigasi menggunakan Navigator.push saat kartu ditekan.
